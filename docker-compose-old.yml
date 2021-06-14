@@ -2,8 +2,7 @@ version: '3.4'
 
 services:
   backend:
-    container_name: flashcards_app
     build: .
     restart: always
     ports:
-      - 8000:8000
+      - 80:80

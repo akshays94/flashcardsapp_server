@@ -11,6 +11,7 @@ from dependencies import SECRET_KEY
 from dependencies import ALGORITHM
 from dependencies import ACCESS_TOKEN_EXPIRE_MINUTES
 from dependencies import get_user
+from dependencies import get_current_user
 
 router = APIRouter()
 
@@ -71,7 +72,7 @@ class TokenBody(BaseModel):
     token_type: str
 
 
-@router.post('/login', response_model=TokenBody)
+@router.post('/login')
 async def login(data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(data.username, data.password)
     if not user:
@@ -84,4 +85,18 @@ async def login(data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(
         data={'sub': user['username']}, expires_delta=access_token_expires
     )
-    return {'access_token': access_token, 'token_type': 'bearer'}
+    return {
+        'access_token': access_token,
+        'token_type': 'bearer',
+        'user': user
+    }
+
+
+class UserBody(BaseModel):
+    name: str
+    username: str
+
+
+@router.get('/validate-token/')
+async def validate_token(current_user: UserBody = Depends(get_current_user)):
+    return current_user

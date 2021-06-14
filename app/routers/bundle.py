@@ -96,7 +96,7 @@ async def get_bundles(current_user: UserBody = Depends(get_current_user)):
         'bundle',
         'user_id',
         user_id,
-        get_attributes=['title'])
+        get_attributes=['id', 'title'])
     return bundles
 
 
