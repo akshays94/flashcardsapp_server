@@ -209,16 +209,19 @@ class DeckUtility:
         deck_id = curr_revision_log['deck_id']
         current_box = curr_revision_log['current_box']
 
-        # if current_box == 'BOX_1' and not is_correct:
-        #     return
-
-        # if current_box == 'BOX_3' and is_correct:
-        #     return
-
         if is_correct:
             next_box = NEXT_BOX_MAP[current_box]
         else:
             next_box = 'BOX_1'
+
+        # --- Mark session as started ---
+        db.update(
+            db_schema,
+            'revision_session',
+            [{
+                'id': session_id,
+                'is_started': True
+            }])
 
         # --- Update current log to inactive ---
         db.update(
@@ -229,6 +232,7 @@ class DeckUtility:
                 'is_active': False,
                 'moved_to': next_box
             }])
+
         # --- Create new log ---
         db.insert(
             db_schema,
@@ -248,6 +252,7 @@ class DeckUtility:
         today = week[today]
 
         if today in ['SAT', 'SUN']:
+            # TODO: handle this ...
             return []  # nothing to revise today
 
         boxes = ['BOX_1']
@@ -266,7 +271,7 @@ class DeckUtility:
 
         cards_in_session = db.sql(
             '''
-            SELECT log.id, log.session_id, log.current_box, c.id as card_id, c.title, c.content
+            SELECT log.id, log.current_box, c.id as card_id, c.title, c.content
             FROM
                 {db_schema}.revision_log log
                 INNER JOIN {db_schema}.deck_card c ON log.deck_card_id = c.id
@@ -281,7 +286,26 @@ class DeckUtility:
                 boxes_str=boxes_str
             )
         )
-        return cards_in_session
+        card = None
+        remaining_cards = 0
+        if cards_in_session:
+            card = cards_in_session[0]
+            remaining_cards = len(cards_in_session) - 1
+
+        return card, remaining_cards
+
+    @staticmethod
+    def mark_session_all_complete(session_id):
+        db.sql(
+            '''
+            UPDATE {db_schema}.revision_session
+            SET is_completed=true
+            WHERE id='{session_id}'
+            '''.format(
+                db_schema=db_schema,
+                session_id=session_id,
+            )
+        )
 
 
 @router.get('/decks/')
@@ -349,6 +373,35 @@ async def add_card_to_deck(
             'title': data.title,
             'content': data.content
         }])
+    inserted_card_id = deck_card['inserted_hashes'][0]
+
+    # --- Add card to the active session ---
+    active_session = db.sql(
+        '''
+        SELECT id
+        FROM {db_schema}.revision_session
+            WHERE
+                deck_id='{deck_id}'
+                AND is_active=true
+        LIMIT 1
+        '''.format(
+            db_schema=db_schema,
+            deck_id=deck_id
+        )
+    )
+    if active_session:
+        session_id = active_session[0]['id']
+        db.insert(
+            db_schema,
+            'revision_log',
+            [{
+                'deck_id': deck_id,
+                'deck_card_id': inserted_card_id,
+                'current_box': 'BOX_1',
+                'is_active': True,
+                'session_id': session_id
+            }])
+
     return deck_card
 
 
@@ -372,7 +425,7 @@ async def get_cards(
 
 
 @router.post('/decks/{deck_id}/start-revision/')
-async def create_session(
+async def start_revision_for_a_deck(
         deck_id: str,
         current_user: UserBody = Depends(get_current_user)):
     user_id = current_user['id']
@@ -388,6 +441,7 @@ async def create_session(
             'total_cards': 0,
             'correct_cards_count': 0,
             'incorrect_cards_count': 0,
+            'is_active': True,
             'is_completed': False,
             'is_missed': False
         }])
@@ -405,13 +459,24 @@ async def create_session(
     return session
 
 
-@router.get('/sessions/{session}/cards/')
-async def get_cards_in_session(
+@router.get('/sessions/{session}/next-card/')
+async def next_card_in_session(
         session: str = Depends(DeckUtility.get_session),
         current_user: UserBody = Depends(get_current_user)):
     session_id = session['id']
-    cards = DeckUtility.get_cards_in_session(session_id=session_id)
-    return cards
+    card, remaining_cards = \
+        DeckUtility.get_cards_in_session(session_id=session_id)
+
+    is_session_completed = False
+    if not card:
+        is_session_completed = True
+        DeckUtility.mark_session_all_complete(session_id=session_id)
+
+    return {
+        'is_session_completed': is_session_completed,
+        'remaining_cards': remaining_cards,
+        'card': card
+    }
 
 
 @router.post('/sessions/{session}/move-card/')
