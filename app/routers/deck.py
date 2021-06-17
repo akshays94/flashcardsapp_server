@@ -311,12 +311,23 @@ class DeckUtility:
 @router.get('/decks/')
 async def get_decks(current_user: UserBody = Depends(get_current_user)):
     user_id = current_user['id']
-    decks = db.search_by_value(
-        db_schema,
-        'deck',
-        'user_id',
-        user_id,
-        get_attributes=['id', 'title'])
+    decks = db.sql(
+        '''
+        SELECT id, title
+        FROM {db_schema}.deck
+        WHERE user_id='{user_id}'
+        ORDER BY __updatedtime__ DESC
+        '''.format(
+            db_schema=db_schema,
+            user_id=user_id
+        )
+    )
+    # decks = db.search_by_value(
+    #     db_schema,
+    #     'deck',
+    #     'user_id',
+    #     user_id,
+    #     get_attributes=['id', 'title'])
     return decks
 
 
@@ -332,7 +343,18 @@ async def create_deck(
             'user_id': user_id,
             'title': data.title
         }])
-    return deck
+    deck_id = deck['inserted_hashes'][0]
+    deck = db.sql(
+        '''
+        SELECT id, title
+        FROM {db_schema}.deck
+        WHERE id='{deck_id}'
+        '''.format(
+            db_schema=db_schema,
+            deck_id=deck_id
+        )
+    )
+    return deck[0]
 
 
 @router.put('/decks/{deck_id}/')
