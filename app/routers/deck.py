@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import Depends, HTTPException, status, APIRouter
+from fastapi import Depends, HTTPException, status, APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
 from dependencies import get_current_user
@@ -375,29 +375,8 @@ async def update_deck(
     return deck
 
 
-@router.post('/decks/{deck_id}/cards/')
-async def add_card_to_deck(
-        deck_id: str,
-        data: DeckCardBody,
-        current_user: UserBody = Depends(get_current_user)):
-    user_id = current_user['id']
-    DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
-    DeckUtility.is_card_title_exists_in_deck(deck_id=deck_id, title=data.title)
-    order_number = DeckUtility.get_next_order_number(deck_id=deck_id)
-
-    deck_card = db.insert(
-        db_schema,
-        'deck_card',
-        [{
-            'deck_id': deck_id,
-            'user_id': user_id,
-            'order_number': order_number,
-            'title': data.title,
-            'content': data.content
-        }])
-    inserted_card_id = deck_card['inserted_hashes'][0]
-
-    # --- Add card to the active session ---
+def add_new_card_to_active_session(deck_id, inserted_card_id):
+    print('add_new_card_to_active_session ...')
     active_session = db.sql(
         '''
         SELECT id
@@ -424,7 +403,49 @@ async def add_card_to_deck(
                 'session_id': session_id
             }])
 
-    return deck_card
+
+@router.post('/decks/{deck_id}/cards/')
+async def add_card_to_deck(
+        deck_id: str,
+        data: DeckCardBody,
+        background_tasks: BackgroundTasks,
+        current_user: UserBody = Depends(get_current_user)):
+    user_id = current_user['id']
+    DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
+    DeckUtility.is_card_title_exists_in_deck(deck_id=deck_id, title=data.title)
+    order_number = DeckUtility.get_next_order_number(deck_id=deck_id)
+
+    deck_card = db.insert(
+        db_schema,
+        'deck_card',
+        [{
+            'deck_id': deck_id,
+            'user_id': user_id,
+            'order_number': order_number,
+            'title': data.title,
+            'content': data.content
+        }])
+    inserted_card_id = deck_card['inserted_hashes'][0]
+
+    card = db.sql(
+        '''
+        SELECT id, title, content
+        FROM {db_schema}.deck_card
+        WHERE id='{card_id}'
+        LIMIT 1
+        '''.format(
+            db_schema=db_schema,
+            card_id=inserted_card_id
+        )
+    )
+
+    # --- Add card to the active session ---
+    background_tasks.add_task(
+        add_new_card_to_active_session,
+        deck_id,
+        inserted_card_id)
+
+    return card[0]
 
 
 @router.get('/decks/{deck_id}/cards/')
