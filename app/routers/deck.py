@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status, APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
 from dependencies import get_current_user
+from dependencies import get_current_user_id
 from database import db
 from database import db_schema
 
@@ -334,8 +335,7 @@ async def get_decks(current_user: UserBody = Depends(get_current_user)):
 @router.post('/decks/')
 async def create_deck(
         data: DeckBody,
-        current_user: UserBody = Depends(get_current_user)):
-    user_id = current_user['id']
+        user_id: UserBody = Depends(get_current_user_id)):
     deck = db.insert(
         db_schema,
         'deck',
@@ -344,17 +344,11 @@ async def create_deck(
             'title': data.title
         }])
     deck_id = deck['inserted_hashes'][0]
-    deck = db.sql(
-        '''
-        SELECT id, title
-        FROM {db_schema}.deck
-        WHERE id='{deck_id}'
-        '''.format(
-            db_schema=db_schema,
-            deck_id=deck_id
-        )
-    )
-    return deck[0]
+    deck = {
+        'id': deck_id,
+        'title': data.title
+    }
+    return deck
 
 
 @router.put('/decks/{deck_id}/')
@@ -411,9 +405,10 @@ async def add_card_to_deck(
         background_tasks: BackgroundTasks,
         current_user: UserBody = Depends(get_current_user)):
     user_id = current_user['id']
-    DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
-    DeckUtility.is_card_title_exists_in_deck(deck_id=deck_id, title=data.title)
-    order_number = DeckUtility.get_next_order_number(deck_id=deck_id)
+    # DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
+    # DeckUtility.is_card_title_exists_in_deck(deck_id=deck_id, title=data.title)
+    # order_number = DeckUtility.get_next_order_number(deck_id=deck_id)
+    order_number = 10
 
     deck_card = db.insert(
         db_schema,
@@ -427,17 +422,11 @@ async def add_card_to_deck(
         }])
     inserted_card_id = deck_card['inserted_hashes'][0]
 
-    card = db.sql(
-        '''
-        SELECT id, title, content
-        FROM {db_schema}.deck_card
-        WHERE id='{card_id}'
-        LIMIT 1
-        '''.format(
-            db_schema=db_schema,
-            card_id=inserted_card_id
-        )
-    )
+    card = {
+        'id': inserted_card_id,
+        'title': data.title,
+        'content': data.content
+    }
 
     # --- Add card to the active session ---
     background_tasks.add_task(
@@ -445,14 +434,13 @@ async def add_card_to_deck(
         deck_id,
         inserted_card_id)
 
-    return card[0]
+    return card
 
 
 @router.get('/decks/{deck_id}/cards/')
 async def get_cards(
         deck_id: str,
-        current_user: UserBody = Depends(get_current_user)):
-    user_id = current_user['id']
+        user_id: UserBody = Depends(get_current_user_id)):
     deck_cards = db.sql(
         '''
         SELECT id, title, content
