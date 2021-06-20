@@ -101,7 +101,7 @@ class DeckUtility:
             '''
             SELECT deck_card_id, current_box
             FROM {db_schema}.revision_log
-            WHERE deck_id='{deck_id}' AND is_active=true
+            WHERE deck_id='{deck_id}'
             '''.format(
                 db_schema=db_schema,
                 deck_id=deck_id
@@ -252,9 +252,9 @@ class DeckUtility:
         today = datetime.today().weekday()
         today = week[today]
 
-        if today in ['SAT', 'SUN']:
-            # TODO: handle this ...
-            return []  # nothing to revise today
+        # if today in ['SAT', 'SUN']:
+        #     # TODO: handle this ...
+        #     return [], 0  # nothing to revise today
 
         boxes = ['BOX_1']
 
@@ -458,11 +458,10 @@ async def get_cards(
 @router.post('/decks/{deck_id}/start-revision/')
 async def start_revision_for_a_deck(
         deck_id: str,
-        current_user: UserBody = Depends(get_current_user)):
-    user_id = current_user['id']
-    DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
+        user_id: UserBody = Depends(get_current_user_id)):
+    # DeckUtility.is_deck_exists(user_id=user_id, deck_id=deck_id)
     session_date = str(datetime.now().date())
-    session = db.insert(
+    created_session = db.insert(
         db_schema,
         'revision_session',
         [{
@@ -476,7 +475,7 @@ async def start_revision_for_a_deck(
             'is_completed': False,
             'is_missed': False
         }])
-    session_id = session['inserted_hashes'][0]
+    session_id = created_session['inserted_hashes'][0]
     total_cards = \
         DeckUtility.create_revision_logs(deck_id=deck_id, session_id=session_id)
     db.update(
@@ -487,7 +486,36 @@ async def start_revision_for_a_deck(
             'deck_id': deck_id,
             'total_cards': total_cards,
         }])
-    return session
+    session = db.sql(
+        '''
+        SELECT s.id, s.session_date, d.title
+        FROM {db_schema}.revision_session s
+        INNER JOIN {db_schema}.deck d ON s.deck_id = d.id
+        WHERE s.id='{session_id}'
+        '''.format(
+            db_schema=db_schema,
+            session_id=session_id
+        )
+    )
+    return session[0]
+
+
+@router.get('/sessions/{session_id}/')
+async def retrieve_session(
+        session_id: str,
+        user_id: UserBody = Depends(get_current_user_id)):
+    session = db.sql(
+        '''
+        SELECT s.id, s.session_date, d.title
+        FROM {db_schema}.revision_session s
+        INNER JOIN {db_schema}.deck d ON s.deck_id = d.id
+        WHERE s.id='{session_id}'
+        '''.format(
+            db_schema=db_schema,
+            session_id=session_id
+        )
+    )
+    return session[0]
 
 
 @router.get('/sessions/{session}/next-card/')
@@ -514,7 +542,7 @@ async def next_card_in_session(
 async def move_card_in_session(
         data: MoveCardBody,
         session: str = Depends(DeckUtility.get_session),
-        current_user: UserBody = Depends(get_current_user)):
+        user_id: UserBody = Depends(get_current_user_id)):
     session_id = session['id']
     card_id = data.card_id
     is_correct = data.is_correct
@@ -524,8 +552,11 @@ async def move_card_in_session(
     return 'Card moved'
 
 
+# TODO: remove this API
 @router.post('/del')
 def del_rev():
+    # db.sql('delete from flash.deck')
+    # db.sql('delete from flash.deck_card')
     db.sql('delete from flash.revision_session')
     db.sql('delete from flash.revision_log')
-    return
+    return 'Deleted ...'
