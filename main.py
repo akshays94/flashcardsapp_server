@@ -11,6 +11,7 @@ app.include_router(deck.router)
 
 origins = [
     "http://localhost:8080",
+    "https://flashlearnapp.netlify.app"
 ]
 
 app.add_middleware(
