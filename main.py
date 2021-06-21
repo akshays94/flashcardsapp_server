@@ -32,3 +32,5 @@ def read_root():
 # deactivate
 # python3 -m pip install -r requirements/base.txt
 # uvicorn main:app --reload --port 8002
+
+# heroku logs --tail --app flashcardsapp-akie
