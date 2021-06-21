@@ -2,10 +2,10 @@ from datetime import datetime
 from fastapi import Depends, HTTPException, status, APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
-from dependencies import get_current_user
-from dependencies import get_current_user_id
-from database import db
-from database import db_schema
+from app.dependencies import get_current_user
+from app.dependencies import get_current_user_id
+from app.database import db
+from app.database import db_schema
 
 
 router = APIRouter()

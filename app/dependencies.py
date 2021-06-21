@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from typing import Optional
 from jose import JWTError, jwt
-from config import settings
-from database import db
-from database import db_schema
+from app.config import settings
+from app.database import db
+from app.database import db_schema
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')

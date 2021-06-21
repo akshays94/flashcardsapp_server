@@ -5,13 +5,13 @@ from pydantic import BaseModel
 from typing import Optional
 from passlib.context import CryptContext
 from jose import jwt
-from database import db
-from database import db_schema
-from dependencies import SECRET_KEY
-from dependencies import ALGORITHM
-from dependencies import ACCESS_TOKEN_EXPIRE_MINUTES
-from dependencies import get_user
-from dependencies import get_current_user
+from app.database import db
+from app.database import db_schema
+from app.dependencies import SECRET_KEY
+from app.dependencies import ALGORITHM
+from app.dependencies import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.dependencies import get_user
+from app.dependencies import get_current_user
 
 router = APIRouter()
 

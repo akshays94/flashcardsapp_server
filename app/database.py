@@ -1,5 +1,5 @@
 import harperdb
-from config import settings
+from app.config import settings
 
 print('-' * 25)
 db = harperdb.HarperDB(
