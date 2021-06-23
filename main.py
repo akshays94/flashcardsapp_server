@@ -25,7 +25,7 @@ app.add_middleware(
 
 @app.get('/')
 def read_root():
-    return 'Welcome to Flash Cards App API xxx'
+    return 'Welcome to Flash Cards App API'
 
 
 # python3 -m venv flashcardsapp-venv
