@@ -746,6 +746,31 @@ async def delete_deck(
     return 'Deck deleted'
 
 
+@router.delete('/cards/{card_id}/')
+async def delete_card(
+        card_id: str,
+        user_id: UserBody = Depends(get_current_user_id)):
+    db.sql(
+        '''
+        DELETE FROM {db_schema}.deck_card
+        WHERE id='{card_id}'
+        '''.format(
+            db_schema=db_schema,
+            card_id=card_id
+        )
+    )
+    db.sql(
+        '''
+        DELETE FROM {db_schema}.revision_log
+        WHERE deck_card_id='{card_id}'
+        '''.format(
+            db_schema=db_schema,
+            card_id=card_id
+        )
+    )
+    return 'Deck deleted'
+
+
 # TODO: remove this API
 @router.post('/del')
 def del_rev():
