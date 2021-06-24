@@ -46,7 +46,7 @@ async def register(new_user: RegisterUserBody):
     users = get_user(new_user.username)
     if users:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail='Username already exists',
             headers={'WWW-Authenticate': 'Bearer'},
         )
