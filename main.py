@@ -11,7 +11,8 @@ app.include_router(deck.router)
 
 origins = [
     "http://localhost:8080",
-    "https://flashlearnapp.netlify.app"
+    "https://flashlearnapp.netlify.app",
+    "https://flashcardsapp-client.vercel.app"
 ]
 
 app.add_middleware(
@@ -26,12 +27,3 @@ app.add_middleware(
 @app.get('/')
 def read_root():
     return 'Welcome to Flash Cards App API'
-
-
-# python3 -m venv flashcardsapp-venv
-# source flashcardsapp-venv/bin/activate
-# deactivate
-# python3 -m pip install -r requirements/base.txt
-# uvicorn main:app --reload --port 8002
-
-# heroku logs --tail --app flashcardsapp-akie
