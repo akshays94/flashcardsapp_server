@@ -53,7 +53,7 @@ async def register(new_user: RegisterUserBody):
     plain_password = new_user.password
     new_user.password = get_password_hash(plain_password)
     db.insert(db_schema, 'user', [dict(new_user)])
-    return new_user
+    return 'User created'
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
