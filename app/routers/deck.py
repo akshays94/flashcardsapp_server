@@ -531,7 +531,7 @@ async def list_sessions(
         user_id: UserBody = Depends(get_current_user_id)):
     sessions = db.sql(
         '''
-        SELECT total_cards, correct_cards_count, is_completed, session_date, incorrect_cards_count, id
+        SELECT total_cards, correct_cards_count, is_completed, DATE_FORMAT(session_date, "DD/MM/Y") as session_date, incorrect_cards_count, id
         FROM {db_schema}.revision_session
         WHERE deck_id='{deck_id}'
         ORDER BY __createdtime__ DESC
@@ -563,7 +563,7 @@ async def retrieve_session(
         user_id: UserBody = Depends(get_current_user_id)):
     session = db.sql(
         '''
-        SELECT s.id, s.session_date, s.deck_id, d.title
+        SELECT s.id, DATE_FORMAT(s.session_date, "DD/MM/Y") as session_date, s.deck_id, d.title
         FROM {db_schema}.revision_session s
         INNER JOIN {db_schema}.deck d ON s.deck_id = d.id
         WHERE s.id='{session_id}'
