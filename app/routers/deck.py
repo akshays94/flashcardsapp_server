@@ -174,13 +174,11 @@ class DeckUtility:
             INNER JOIN {db_schema}.revision_session sesh
             ON log.session_id = sesh.id
                 WHERE
-                    log.session_id='{session_id}'
-                    AND log.deck_card_id='{card_id}'
+                    log.deck_card_id='{card_id}'
                     AND log.is_active=true
             LIMIT 1
             '''.format(
                 db_schema=db_schema,
-                session_id=session_id,
                 card_id=card_id
             )
         )
@@ -271,13 +269,13 @@ class DeckUtility:
                 {db_schema}.revision_log log
                 INNER JOIN {db_schema}.deck_card c ON log.deck_card_id = c.id
             WHERE
-                log.session_id='{session_id}'
+                log.deck_id='{deck_id}'
                 AND log.is_active=true
                 AND log.current_box in ({boxes_str})
             ORDER BY log.__updatedtime__
             '''.format(
                 db_schema=db_schema,
-                session_id=session_id,
+                deck_id=deck_id,
                 boxes_str=boxes_str
             )
         )
